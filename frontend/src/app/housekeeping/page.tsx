@@ -1,0 +1,397 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+
+export default function HousekeepingPage() {
+  const router = useRouter()
+  const [filter, setFilter] = useState('전체')
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false)
+  const [showStaffDialog, setShowStaffDialog] = useState(false)
+  const [showMaintenanceDialog, setShowMaintenanceDialog] = useState(false)
+  const [selectedRoom, setSelectedRoom] = useState<number | null>(null)
+  
+  // 하우스키핑 상태 데이터 타입 정의
+  type Room = {
+    id: number;
+    roomNumber: string;
+    roomType: string;
+    floor: number;
+    status: string;
+    lastCleaned: string;
+    assignedTo: string;
+  }
+  
+  // 하우스키핑 상태 데이터 (실제로는 API에서 가져올 것)
+  const [rooms, setRooms] = useState<Room[]>([
+    { id: 1, roomNumber: '101', roomType: '스탠다드', floor: 1, status: '청소 필요', lastCleaned: '2025-05-25', assignedTo: '김청소' },
+    { id: 2, roomNumber: '102', roomType: '디럭스', floor: 1, status: '청소 중', lastCleaned: '2025-05-25', assignedTo: '이청소' },
+    { id: 3, roomNumber: '201', roomType: '스위트', floor: 2, status: '청소 완료', lastCleaned: '2025-05-26', assignedTo: '박청소' },
+    { id: 4, roomNumber: '202', roomType: '스탠다드', floor: 2, status: '점검 필요', lastCleaned: '2025-05-24', assignedTo: '미배정' },
+    { id: 5, roomNumber: '301', roomType: '디럭스', floor: 3, status: '청소 필요', lastCleaned: '2025-05-25', assignedTo: '미배정' },
+    { id: 6, roomNumber: '302', roomType: '패밀리', floor: 3, status: '청소 완료', lastCleaned: '2025-05-26', assignedTo: '최청소' },
+    { id: 7, roomNumber: '401', roomType: '스탠다드', floor: 4, status: '청소 중', lastCleaned: '2025-05-25', assignedTo: '정청소' },
+    { id: 8, roomNumber: '402', roomType: '스위트', floor: 4, status: '청소 완료', lastCleaned: '2025-05-26', assignedTo: '한청소' },
+  ])
+
+  // 필터링된 객실 목록
+  const filteredRooms = filter === '전체' 
+    ? rooms 
+    : rooms.filter(room => room.status === filter)
+
+  // 상태별 객실 수
+  const statusCounts = {
+    '청소 필요': rooms.filter(room => room.status === '청소 필요').length,
+    '청소 중': rooms.filter(room => room.status === '청소 중').length,
+    '청소 완료': rooms.filter(room => room.status === '청소 완료').length,
+    '점검 필요': rooms.filter(room => room.status === '점검 필요').length,
+  }
+
+  const handleStatusChange = (roomId: number, newStatus: string) => {
+    // 실제로는 API 호출하여 상태 변경
+    setRooms(prevRooms => 
+      prevRooms.map(room => 
+        room.id === roomId ? { ...room, status: newStatus } : room
+      )
+    )
+    alert(`객실 ${roomId}의 상태를 ${newStatus}로 변경했습니다.`)
+  }
+
+  const handleAssign = (roomId: number) => {
+    setSelectedRoom(roomId)
+    setShowStaffDialog(true)
+  }
+  
+  const handleAssignStaff = (staffName: string) => {
+    if (selectedRoom && staffName) {
+      setRooms(prevRooms => 
+        prevRooms.map(room => 
+          room.id === selectedRoom ? { ...room, assignedTo: staffName } : room
+        )
+      )
+      alert(`객실 ${selectedRoom}에 ${staffName}을(를) 배정했습니다.`)
+      setShowStaffDialog(false)
+    }
+  }
+  
+  const handleMaintenanceRequest = (roomId: number) => {
+    setSelectedRoom(roomId)
+    setShowMaintenanceDialog(true)
+  }
+  
+  const handleMaintenanceSubmit = (issue: string) => {
+    if (selectedRoom && issue) {
+      setRooms(prevRooms => 
+        prevRooms.map(room => 
+          room.id === selectedRoom ? { ...room, status: '유지보수 필요' } : room
+        )
+      )
+      alert(`객실 ${selectedRoom}의 유지보수 요청을 등록했습니다: ${issue}`)
+      setShowMaintenanceDialog(false)
+    }
+  }
+  
+  const handleCompleteTask = (roomId: number) => {
+    setRooms(prevRooms => 
+      prevRooms.map(room => 
+        room.id === roomId ? { ...room, status: '청소 완료', lastCleaned: '2025-05-26' } : room
+      )
+    )
+    alert(`객실 ${roomId}의 청소가 완료되었습니다.`)
+  }
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">하우스키핑 관리</h1>
+            <p className="text-muted-foreground">객실 청소 및 유지보수 상태 관리</p>
+          </div>
+          <div className="flex space-x-2">
+            <Button variant="outline" onClick={() => setShowScheduleDialog(true)}>
+              청소 일정 관리
+            </Button>
+            <Button onClick={() => router.push('/rooms')}>
+              객실 관리로 돌아가기
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="bg-yellow-50 cursor-pointer" onClick={() => setFilter('청소 필요')}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">청소 필요</CardTitle>
+              <CardDescription>
+                청소가 필요한 객실
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{statusCounts['청소 필요']}</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-blue-50 cursor-pointer" onClick={() => setFilter('청소 중')}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">청소 중</CardTitle>
+              <CardDescription>
+                현재 청소 진행 중인 객실
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{statusCounts['청소 중']}</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-green-50 cursor-pointer" onClick={() => setFilter('청소 완료')}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">청소 완료</CardTitle>
+              <CardDescription>
+                청소가 완료된 객실
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{statusCounts['청소 완료']}</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-red-50 cursor-pointer" onClick={() => setFilter('점검 필요')}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">점검 필요</CardTitle>
+              <CardDescription>
+                유지보수 점검이 필요한 객실
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{statusCounts['점검 필요']}</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>객실 하우스키핑 현황</CardTitle>
+              <CardDescription>
+                {filter === '전체' ? '모든 객실' : `${filter} 상태인 객실`} 목록
+              </CardDescription>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm">필터:</span>
+              <select 
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                className="p-1 border rounded text-sm"
+              >
+                <option value="전체">전체 보기</option>
+                <option value="청소 필요">청소 필요</option>
+                <option value="청소 중">청소 중</option>
+                <option value="청소 완료">청소 완료</option>
+                <option value="점검 필요">점검 필요</option>
+              </select>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-2">객실 번호</th>
+                    <th className="text-left p-2">타입</th>
+                    <th className="text-left p-2">층</th>
+                    <th className="text-left p-2">상태</th>
+                    <th className="text-left p-2">마지막 청소일</th>
+                    <th className="text-left p-2">담당자</th>
+                    <th className="text-left p-2">액션</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRooms.map(room => (
+                    <tr key={room.id} className="border-b hover:bg-muted/50">
+                      <td className="p-2">{room.roomNumber}</td>
+                      <td className="p-2">{room.roomType}</td>
+                      <td className="p-2">{room.floor}층</td>
+                      <td className="p-2">
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          room.status === '청소 필요' ? 'bg-yellow-100 text-yellow-800' :
+                          room.status === '청소 중' ? 'bg-blue-100 text-blue-800' :
+                          room.status === '청소 완료' ? 'bg-green-100 text-green-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {room.status}
+                        </span>
+                      </td>
+                      <td className="p-2">{room.lastCleaned}</td>
+                      <td className="p-2">{room.assignedTo}</td>
+                      <td className="p-2 space-x-1">
+                        <div className="flex space-x-1">
+                          <select
+                            className="p-1 border rounded text-xs"
+                            onChange={(e) => handleStatusChange(room.id, e.target.value)}
+                            value=""
+                            defaultValue=""
+                          >
+                            <option value="" disabled>상태 변경</option>
+                            <option value="청소 필요">청소 필요</option>
+                            <option value="청소 중">청소 중</option>
+                            <option value="청소 완료">청소 완료</option>
+                            <option value="점검 필요">점검 필요</option>
+                          </select>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleAssign(room.id)}
+                            className="text-xs"
+                          >
+                            담당자 배정
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleMaintenanceRequest(room.id)}
+                            className="text-xs"
+                          >
+                            유지보수
+                          </Button>
+                          {room.status !== '청소 완료' && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => handleCompleteTask(room.id)}
+                              className="text-xs"
+                            >
+                              완료처리
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 청소 일정 관리 다이얼로그 */}
+      <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>청소 일정 관리</DialogTitle>
+            <DialogDescription>
+              호텔 전체 청소 일정을 관리합니다.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4">
+              <div className="p-4 border rounded">
+                <h3 className="font-medium">오늘의 청소 일정</h3>
+                <p className="text-sm text-muted-foreground mt-2">청소 필요: {statusCounts['청소 필요']} 객실</p>
+                <p className="text-sm text-muted-foreground">청소 중: {statusCounts['청소 중']} 객실</p>
+                <p className="text-sm text-muted-foreground">청소 완료: {statusCounts['청소 완료']} 객실</p>
+              </div>
+              <div className="p-4 border rounded">
+                <h3 className="font-medium">일정 설정</h3>
+                <div className="mt-2 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">청소 시작 시간</span>
+                    <input type="time" className="p-1 border rounded" defaultValue="09:00" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">청소 완료 시간</span>
+                    <input type="time" className="p-1 border rounded" defaultValue="15:00" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">객실당 평균 청소 시간</span>
+                    <input type="number" className="p-1 border rounded w-16" defaultValue="30" min="10" max="120" /> 분
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => {
+              alert('청소 일정이 저장되었습니다.')
+              setShowScheduleDialog(false)
+            }}>저장하기</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 담당자 배정 다이얼로그 */}
+      <Dialog open={showStaffDialog} onOpenChange={setShowStaffDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>담당자 배정</DialogTitle>
+            <DialogDescription>
+              선택한 객실에 담당자를 배정합니다.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">담당자 선택</label>
+              <select className="w-full p-2 border rounded" id="staff-select" defaultValue="">
+                <option value="" disabled>담당자 선택</option>
+                <option value="김청소">김청소</option>
+                <option value="이청소">이청소</option>
+                <option value="박청소">박청소</option>
+                <option value="정청소">정청소</option>
+                <option value="최청소">최청소</option>
+              </select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => {
+              const select = document.getElementById('staff-select') as HTMLSelectElement
+              const staffName = select.value
+              handleAssignStaff(staffName)
+            }}>배정하기</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 유지보수 요청 다이얼로그 */}
+      <Dialog open={showMaintenanceDialog} onOpenChange={setShowMaintenanceDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>유지보수 요청</DialogTitle>
+            <DialogDescription>
+              선택한 객실의 유지보수 사항을 입력합니다.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">유지보수 유형</label>
+              <select className="w-full p-2 border rounded" id="maintenance-type">
+                <option value="전기">전기</option>
+                <option value="수도">수도</option>
+                <option value="냉난방">냉난방</option>
+                <option value="가구">가구</option>
+                <option value="기타">기타</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">상세 내용</label>
+              <textarea 
+                id="maintenance-details"
+                className="w-full p-2 border rounded" 
+                rows={4} 
+                placeholder="유지보수가 필요한 상세 내용을 입력하세요."
+              ></textarea>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => {
+              const type = (document.getElementById('maintenance-type') as HTMLSelectElement).value
+              const details = (document.getElementById('maintenance-details') as HTMLTextAreaElement).value
+              const issue = `${type}: ${details}`
+              handleMaintenanceSubmit(issue)
+            }}>요청하기</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </DashboardLayout>
+  )
+}
