@@ -1,4 +1,4 @@
-<img src="./image.jpg" width="800">
+<img src="./image.jpg" width="900">
 
 # 호텔 관리 시스템 (PMS - Property Management System)
 
