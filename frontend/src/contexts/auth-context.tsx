@@ -42,11 +42,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     { username: 'manager', password: 'manager123', role: 'manager' }
   ]
 
-  // 페이지 로드 시 세션 스토리지에서 사용자 정보 가져오기
+  // 페이지 로드 시 로컬 스토리지에서 사용자 정보 가져오기
   useEffect(() => {
-    const storedUser = sessionStorage.getItem('user')
+    const storedUser = localStorage.getItem('user')
     if (storedUser) {
-      setUser(JSON.parse(storedUser))
+      try {
+        setUser(JSON.parse(storedUser))
+      } catch (error) {
+        console.error('Failed to parse user data:', error)
+        localStorage.removeItem('user')
+      }
     }
     setIsLoading(false)
   }, [])
@@ -57,26 +62,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const foundUser = validUsers.find(
       user => user.username === username && user.password === password
     )
-    
+
     if (foundUser) {
       const userData = {
         username: foundUser.username,
         role: foundUser.role,
         isLoggedIn: true
       }
-      
-      // 세션 스토리지에 사용자 정보 저장
-      sessionStorage.setItem('user', JSON.stringify(userData))
+
+      // 로컬 스토리지에 사용자 정보 저장 (영구 저장)
+      localStorage.setItem('user', JSON.stringify(userData))
       setUser(userData)
       return true
     }
-    
+
     return false
   }
 
   // 로그아웃 함수
   const logout = () => {
-    sessionStorage.removeItem('user')
+    localStorage.removeItem('user')
     setUser(null)
     router.push('/login')
   }

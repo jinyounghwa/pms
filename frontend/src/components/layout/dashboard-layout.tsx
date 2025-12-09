@@ -14,6 +14,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { user, isLoading } = useAuth()
   const router = useRouter()
   const [isClient, setIsClient] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // 클라이언트 사이드 렌더링 확인
   useEffect(() => {
@@ -43,10 +44,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Navbar />
-      <div className="flex flex-1">
-        <Sidebar />
-        <main className="flex-1 p-6">{children}</main>
+      <Navbar onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
+      <div className="flex flex-1 relative">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <main className="flex-1 p-4 sm:p-6 w-full overflow-x-hidden">{children}</main>
       </div>
     </div>
   )

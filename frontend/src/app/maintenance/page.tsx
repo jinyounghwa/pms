@@ -1,372 +1,270 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  Wrench,
+  Clock,
+  Loader,
+  CheckCircle2,
+  AlertCircle,
+  Home,
+  Plus,
+  TrendingUp,
+  AlertTriangle
+} from 'lucide-react'
+import { maintenanceAPI } from '@/lib/local-storage'
 
 export default function MaintenancePage() {
   const router = useRouter()
+  const [mounted, setMounted] = useState(false)
   const [filter, setFilter] = useState('전체')
-  const [showAddDialog, setShowAddDialog] = useState(false)
-  const [selectedRoom, setSelectedRoom] = useState<number | null>(null)
-  
-  // 유지보수 데이터 타입 정의
-  type Maintenance = {
-    id: number;
-    roomNumber: string;
-    roomType: string;
-    floor: number;
-    issue: string;
-    status: string;
-    startDate: string;
-    expectedEndDate: string;
-    assignedTo: string;
-    priority: string;
-  }
-  
-  // 유지보수 상태 데이터 (실제로는 API에서 가져올 것)
-  const [maintenances, setMaintenances] = useState<Maintenance[]>([
-    { id: 1, roomNumber: '301', roomType: '디럭스', floor: 3, issue: '에어컨 수리', status: '진행 중', startDate: '2025-05-24', expectedEndDate: '2025-05-28', assignedTo: '김기술', priority: '높음' },
-    { id: 2, roomNumber: '405', roomType: '스위트', floor: 4, issue: '욕실 리모델링', status: '진행 중', startDate: '2025-05-20', expectedEndDate: '2025-06-10', assignedTo: '이기술', priority: '중간' },
-    { id: 3, roomNumber: '502', roomType: '스탠다드', floor: 5, issue: 'TV 교체', status: '진행 중', startDate: '2025-05-25', expectedEndDate: '2025-05-27', assignedTo: '박기술', priority: '낮음' },
-    { id: 4, roomNumber: '203', roomType: '디럭스', floor: 2, issue: '침대 교체', status: '완료', startDate: '2025-05-15', expectedEndDate: '2025-05-18', assignedTo: '최기술', priority: '중간' },
-    { id: 5, roomNumber: '107', roomType: '스탠다드', floor: 1, issue: '전기 콘센트 수리', status: '대기 중', startDate: '2025-05-26', expectedEndDate: '2025-05-27', assignedTo: '미배정', priority: '높음' },
-    { id: 6, roomNumber: '401', roomType: '패밀리', floor: 4, issue: '샤워 수압 문제', status: '대기 중', startDate: '2025-05-26', expectedEndDate: '2025-05-29', assignedTo: '미배정', priority: '중간' },
-  ])
+  const [tasks, setTasks] = useState<any[]>([])
 
-  // 필터링된 유지보수 목록
-  const filteredMaintenances = filter === '전체' 
-    ? maintenances 
-    : maintenances.filter(maintenance => maintenance.status === filter)
+  useEffect(() => {
+    setMounted(true)
+    setTasks(maintenanceAPI.getAll())
+  }, [])
 
-  // 상태별 유지보수 수
+  if (!mounted) return null
+
+  const filteredTasks = filter === '전체'
+    ? tasks
+    : tasks.filter(task => task.status === filter)
+
   const statusCounts = {
-    '대기 중': maintenances.filter(maintenance => maintenance.status === '대기 중').length,
-    '진행 중': maintenances.filter(maintenance => maintenance.status === '진행 중').length,
-    '완료': maintenances.filter(maintenance => maintenance.status === '완료').length,
+    pending: tasks.filter(t => t.status === 'pending').length,
+    in_progress: tasks.filter(t => t.status === 'in_progress').length,
+    completed: tasks.filter(t => t.status === 'completed').length,
   }
 
-  const handleStatusChange = (maintenanceId: number, newStatus: string) => {
-    // 실제로는 API 호출하여 상태 변경
-    setMaintenances(prevMaintenances => 
-      prevMaintenances.map(maintenance => 
-        maintenance.id === maintenanceId ? { ...maintenance, status: newStatus } : maintenance
-      )
-    )
-    alert(`유지보수 ID ${maintenanceId}의 상태를 ${newStatus}로 변경했습니다.`)
+  const priorityCounts = {
+    high: tasks.filter(t => t.priority === 'high').length,
+    medium: tasks.filter(t => t.priority === 'medium').length,
+    low: tasks.filter(t => t.priority === 'low').length,
   }
 
-  const handleAssign = (maintenanceId: number) => {
-    setSelectedRoom(maintenanceId)
-    setShowAddDialog(true)
-  }
-  
-  const handleComplete = (maintenanceId: number) => {
-    setMaintenances(prevMaintenances => 
-      prevMaintenances.map(maintenance => 
-        maintenance.id === maintenanceId ? { ...maintenance, status: '완료' } : maintenance
-      )
-    )
-    alert(`유지보수 ID ${maintenanceId}의 작업이 완료되었습니다.`)
-  }
-
-  const handleAddMaintenance = (data: any) => {
-    // 실제로는 API 호출하여 유지보수 추가
-    const newMaintenance: Maintenance = {
-      id: maintenances.length + 1,
-      roomNumber: data.roomNumber,
-      roomType: data.roomType,
-      floor: parseInt(data.floor),
-      issue: data.issue,
-      status: '대기 중',
-      startDate: new Date().toISOString().split('T')[0],
-      expectedEndDate: data.expectedEndDate,
-      assignedTo: data.assignedTo || '미배정',
-      priority: data.priority,
+  const getStatusInfo = (status: string) => {
+    const statusMap: any = {
+      pending: { label: '대기 중', icon: Clock, color: 'text-amber-400', bgColor: 'bg-amber-500/10', borderColor: 'border-amber-500/20' },
+      in_progress: { label: '진행 중', icon: Loader, color: 'text-blue-400', bgColor: 'bg-blue-500/10', borderColor: 'border-blue-500/20' },
+      completed: { label: '완료', icon: CheckCircle2, color: 'text-green-400', bgColor: 'bg-green-500/10', borderColor: 'border-green-500/20' }
     }
-    
-    setMaintenances([...maintenances, newMaintenance])
-    alert(`객실 ${data.roomNumber}의 유지보수 요청이 등록되었습니다.`)
-    setShowAddDialog(false)
+    return statusMap[status] || statusMap.pending
+  }
+
+  const getPriorityInfo = (priority: string) => {
+    const priorityMap: any = {
+      high: { label: '높음', color: 'text-red-400', bgColor: 'bg-red-500/10', borderColor: 'border-red-500/20' },
+      medium: { label: '중간', color: 'text-orange-400', bgColor: 'bg-orange-500/10', borderColor: 'border-orange-500/20' },
+      low: { label: '낮음', color: 'text-green-400', bgColor: 'bg-green-500/10', borderColor: 'border-green-500/20' }
+    }
+    return priorityMap[priority] || priorityMap.medium
+  }
+
+  const handleStatusChange = (taskId: string, newStatus: string) => {
+    maintenanceAPI.update(taskId, { status: newStatus as any })
+    setTasks(maintenanceAPI.getAll())
   }
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        {/* Header */}
+        <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 opacity-0 animate-fade-in-up`}>
           <div>
-            <h1 className="text-3xl font-bold">유지보수 관리</h1>
-            <p className="text-muted-foreground">객실 유지보수 상태 및 일정 관리</p>
+            <h1 className="text-3xl font-bold flex items-center gap-3">
+              <Wrench className="h-8 w-8 text-primary" />
+              유지보수 관리
+            </h1>
+            <p className="text-muted-foreground mt-1">객실 유지보수 상태 및 일정 관리</p>
           </div>
-          <div className="flex space-x-2">
-            <Button variant="outline" onClick={() => router.push('/rooms')}>
-              객실 관리로 돌아가기
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" className="glass-hover" onClick={() => router.push('/rooms')}>
+              <Home className="h-4 w-4 mr-2" />
+              객실 관리
             </Button>
-            <Button onClick={() => setShowAddDialog(true)}>
-              유지보수 요청 추가
+            <Button className="bg-primary hover:bg-primary/90">
+              <Plus className="h-4 w-4 mr-2" />
+              유지보수 추가
             </Button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="bg-yellow-50 cursor-pointer" onClick={() => setFilter('대기 중')}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">대기 중</CardTitle>
-              <CardDescription>
-                유지보수 대기 중인 객실
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{statusCounts['대기 중']}</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-blue-50 cursor-pointer" onClick={() => setFilter('진행 중')}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">진행 중</CardTitle>
-              <CardDescription>
-                현재 유지보수 진행 중인 객실
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{statusCounts['진행 중']}</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-green-50 cursor-pointer" onClick={() => setFilter('완료')}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">완료</CardTitle>
-              <CardDescription>
-                유지보수가 완료된 객실
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{statusCounts['완료']}</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>유지보수 현황</CardTitle>
-              <CardDescription>
-                {filter === '전체' ? '모든 유지보수' : `${filter} 상태인 유지보수`} 목록
-              </CardDescription>
+        {/* Status Cards */}
+        <div className={`grid grid-cols-1 sm:grid-cols-3 gap-4 opacity-0 animate-fade-in-up delay-100`}>
+          <div
+            className="glass glass-hover rounded-2xl p-6 border border-amber-500/20 cursor-pointer group"
+            onClick={() => setFilter(filter === 'pending' ? '전체' : 'pending')}
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div className={`p-3 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20`}>
+                <Clock className="h-6 w-6 text-amber-400" />
+              </div>
+              <span className="text-xs text-muted-foreground">작업 대기</span>
             </div>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm">필터:</span>
-              <select 
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">대기 중</p>
+              <p className="text-3xl font-bold text-amber-400">{statusCounts.pending}</p>
+              <p className="text-xs text-muted-foreground">유지보수 대기 중인 객실</p>
+            </div>
+          </div>
+
+          <div
+            className="glass glass-hover rounded-2xl p-6 border border-blue-500/20 cursor-pointer group"
+            onClick={() => setFilter(filter === 'in_progress' ? '전체' : 'in_progress')}
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div className={`p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20`}>
+                <Loader className="h-6 w-6 text-blue-400" />
+              </div>
+              <span className="text-xs text-muted-foreground">작업 중</span>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">진행 중</p>
+              <p className="text-3xl font-bold text-blue-400">{statusCounts.in_progress}</p>
+              <p className="text-xs text-muted-foreground">현재 유지보수 진행 중</p>
+            </div>
+          </div>
+
+          <div
+            className="glass glass-hover rounded-2xl p-6 border border-green-500/20 cursor-pointer group"
+            onClick={() => setFilter(filter === 'completed' ? '전체' : 'completed')}
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div className={`p-3 rounded-xl bg-gradient-to-br from-green-500/20 to-emerald-500/20`}>
+                <CheckCircle2 className="h-6 w-6 text-green-400" />
+              </div>
+              <span className="text-xs text-muted-foreground">완료됨</span>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">완료</p>
+              <p className="text-3xl font-bold text-green-400">{statusCounts.completed}</p>
+              <p className="text-xs text-muted-foreground">유지보수가 완료된 객실</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Priority Stats */}
+        <div className={`glass rounded-2xl p-6 border border-white/10 opacity-0 animate-fade-in-up delay-200`}>
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            우선순위 현황
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-red-500/5 border border-red-500/20">
+              <AlertCircle className="h-8 w-8 text-red-400" />
+              <div>
+                <p className="text-sm text-muted-foreground">긴급</p>
+                <p className="text-2xl font-bold text-red-400">{priorityCounts.high}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-orange-500/5 border border-orange-500/20">
+              <AlertTriangle className="h-8 w-8 text-orange-400" />
+              <div>
+                <p className="text-sm text-muted-foreground">보통</p>
+                <p className="text-2xl font-bold text-orange-400">{priorityCounts.medium}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-green-500/5 border border-green-500/20">
+              <CheckCircle2 className="h-8 w-8 text-green-400" />
+              <div>
+                <p className="text-sm text-muted-foreground">낮음</p>
+                <p className="text-2xl font-bold text-green-400">{priorityCounts.low}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tasks List */}
+        <div className={`glass rounded-2xl border border-white/10 overflow-hidden opacity-0 animate-fade-in-up delay-300`}>
+          <div className="p-6 border-b border-white/10">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h2 className="text-xl font-bold">유지보수 작업 목록</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {filter === '전체' ? '모든 작업' : `${getStatusInfo(filter).label} 상태인 작업`} 목록 ({filteredTasks.length}개)
+                </p>
+              </div>
+              <select
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
-                className="p-1 border rounded text-sm"
+                className="px-4 py-2 bg-background/50 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
               >
                 <option value="전체">전체 보기</option>
-                <option value="대기 중">대기 중</option>
-                <option value="진행 중">진행 중</option>
-                <option value="완료">완료</option>
+                <option value="pending">대기 중</option>
+                <option value="in_progress">진행 중</option>
+                <option value="completed">완료</option>
               </select>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-2">객실 번호</th>
-                    <th className="text-left p-2">타입</th>
-                    <th className="text-left p-2">층</th>
-                    <th className="text-left p-2">문제</th>
-                    <th className="text-left p-2">상태</th>
-                    <th className="text-left p-2">시작일</th>
-                    <th className="text-left p-2">예상 완료일</th>
-                    <th className="text-left p-2">담당자</th>
-                    <th className="text-left p-2">우선순위</th>
-                    <th className="text-left p-2">액션</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredMaintenances.map(maintenance => (
-                    <tr key={maintenance.id} className="border-b hover:bg-muted/50">
-                      <td className="p-2">{maintenance.roomNumber}</td>
-                      <td className="p-2">{maintenance.roomType}</td>
-                      <td className="p-2">{maintenance.floor}층</td>
-                      <td className="p-2">{maintenance.issue}</td>
-                      <td className="p-2">
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          maintenance.status === '대기 중' ? 'bg-yellow-100 text-yellow-800' :
-                          maintenance.status === '진행 중' ? 'bg-blue-100 text-blue-800' :
-                          'bg-green-100 text-green-800'
-                        }`}>
-                          {maintenance.status}
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/10">
+                  <th className="text-left p-4 text-sm font-medium text-muted-foreground">객실</th>
+                  <th className="text-left p-4 text-sm font-medium text-muted-foreground">문제</th>
+                  <th className="text-left p-4 text-sm font-medium text-muted-foreground">상태</th>
+                  <th className="text-left p-4 text-sm font-medium text-muted-foreground">우선순위</th>
+                  <th className="text-left p-4 text-sm font-medium text-muted-foreground">담당자</th>
+                  <th className="text-left p-4 text-sm font-medium text-muted-foreground">생성일</th>
+                  <th className="text-left p-4 text-sm font-medium text-muted-foreground">액션</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTasks.map((task) => {
+                  const statusInfo = getStatusInfo(task.status)
+                  const priorityInfo = getPriorityInfo(task.priority)
+                  const StatusIcon = statusInfo.icon
+                  return (
+                    <tr key={task.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                      <td className="p-4">
+                        <span className="font-medium">객실 #{task.room_id}</span>
+                      </td>
+                      <td className="p-4 text-muted-foreground max-w-xs truncate">
+                        {task.issue}
+                      </td>
+                      <td className="p-4">
+                        <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${statusInfo.bgColor} ${statusInfo.color} border ${statusInfo.borderColor}`}>
+                          <StatusIcon className="h-3 w-3" />
+                          {statusInfo.label}
                         </span>
                       </td>
-                      <td className="p-2">{maintenance.startDate}</td>
-                      <td className="p-2">{maintenance.expectedEndDate}</td>
-                      <td className="p-2">{maintenance.assignedTo}</td>
-                      <td className="p-2">
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          maintenance.priority === '높음' ? 'bg-red-100 text-red-800' :
-                          maintenance.priority === '중간' ? 'bg-orange-100 text-orange-800' :
-                          'bg-green-100 text-green-800'
-                        }`}>
-                          {maintenance.priority}
+                      <td className="p-4">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${priorityInfo.bgColor} ${priorityInfo.color} border ${priorityInfo.borderColor}`}>
+                          {priorityInfo.label}
                         </span>
                       </td>
-                      <td className="p-2 space-x-1">
-                        <div className="flex space-x-1">
-                          <select
-                            className="p-1 border rounded text-xs"
-                            onChange={(e) => handleStatusChange(maintenance.id, e.target.value)}
-                            value=""
-                            defaultValue=""
-                          >
-                            <option value="" disabled>상태 변경</option>
-                            <option value="대기 중">대기 중</option>
-                            <option value="진행 중">진행 중</option>
-                            <option value="완료">완료</option>
-                          </select>
-                          {maintenance.assignedTo === '미배정' && (
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={() => handleAssign(maintenance.id)}
-                              className="text-xs"
-                            >
-                              담당자 배정
-                            </Button>
-                          )}
-                          {maintenance.status !== '완료' && (
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={() => handleComplete(maintenance.id)}
-                              className="text-xs"
-                            >
-                              완료처리
-                            </Button>
-                          )}
-                        </div>
+                      <td className="p-4">
+                        <span className={`${task.assigned_to === '' ? 'text-muted-foreground italic' : ''}`}>
+                          {task.assigned_to || '미배정'}
+                        </span>
+                      </td>
+                      <td className="p-4 text-muted-foreground text-sm">
+                        {new Date(task.created_at).toLocaleDateString('ko-KR')}
+                      </td>
+                      <td className="p-4">
+                        <select
+                          className="px-2 py-1 bg-background/50 border border-white/10 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary/50"
+                          onChange={(e) => handleStatusChange(task.id, e.target.value)}
+                          value=""
+                        >
+                          <option value="" disabled>상태 변경</option>
+                          <option value="pending">대기 중</option>
+                          <option value="in_progress">진행 중</option>
+                          <option value="completed">완료</option>
+                        </select>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* 유지보수 요청 추가 다이얼로그 */}
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>유지보수 요청 추가</DialogTitle>
-            <DialogDescription>
-              새로운 유지보수 요청을 등록합니다.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">객실 번호</label>
-                <input 
-                  id="room-number"
-                  type="text" 
-                  className="w-full p-2 border rounded" 
-                  placeholder="예: 301"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">객실 타입</label>
-                <select id="room-type" className="w-full p-2 border rounded">
-                  <option value="스탠다드">스탠다드</option>
-                  <option value="디럭스">디럭스</option>
-                  <option value="스위트">스위트</option>
-                  <option value="패밀리">패밀리</option>
-                </select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">층</label>
-                <input 
-                  id="floor"
-                  type="number" 
-                  className="w-full p-2 border rounded" 
-                  placeholder="예: 3"
-                  min="1"
-                  max="10"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">우선순위</label>
-                <select id="priority" className="w-full p-2 border rounded">
-                  <option value="높음">높음</option>
-                  <option value="중간">중간</option>
-                  <option value="낮음">낮음</option>
-                </select>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">문제 내용</label>
-              <textarea 
-                id="issue"
-                className="w-full p-2 border rounded" 
-                rows={3} 
-                placeholder="유지보수가 필요한 문제 내용을 입력하세요."
-              ></textarea>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">예상 완료일</label>
-                <input 
-                  id="expected-end-date"
-                  type="date" 
-                  className="w-full p-2 border rounded" 
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">담당자 (선택사항)</label>
-                <select id="assigned-to" className="w-full p-2 border rounded">
-                  <option value="">미배정</option>
-                  <option value="김기술">김기술</option>
-                  <option value="이기술">이기술</option>
-                  <option value="박기술">박기술</option>
-                  <option value="최기술">최기술</option>
-                </select>
-              </div>
-            </div>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
-          <DialogFooter>
-            <Button onClick={() => {
-              const roomNumber = (document.getElementById('room-number') as HTMLInputElement).value
-              const roomType = (document.getElementById('room-type') as HTMLSelectElement).value
-              const floor = (document.getElementById('floor') as HTMLInputElement).value
-              const issue = (document.getElementById('issue') as HTMLTextAreaElement).value
-              const expectedEndDate = (document.getElementById('expected-end-date') as HTMLInputElement).value
-              const assignedTo = (document.getElementById('assigned-to') as HTMLSelectElement).value
-              const priority = (document.getElementById('priority') as HTMLSelectElement).value
-              
-              if (!roomNumber || !floor || !issue || !expectedEndDate) {
-                alert('필수 항목을 모두 입력해주세요.')
-                return
-              }
-              
-              handleAddMaintenance({
-                roomNumber,
-                roomType,
-                floor,
-                issue,
-                expectedEndDate,
-                assignedTo,
-                priority
-              })
-            }}>등록하기</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      </div>
     </DashboardLayout>
   )
 }
