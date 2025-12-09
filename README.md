@@ -68,16 +68,14 @@ admin/admin123, staff/staff123, manager/manager123
 git clone https://github.com/jinyounghwa/pms.git
 cd pms
 
-# 프론트엔드 종속성 설치
-cd frontend
+# 종속성 설치
 yarn install
 ```
 
 ### 개발 서버 실행
 
 ```bash
-# 프론트엔드 개발 서버 실행
-cd frontend
+# 개발 서버 실행
 yarn dev
 ```
 
@@ -87,23 +85,22 @@ yarn dev
 
 ```
 pms/
-├── frontend/               # 프론트엔드 코드
-│   ├── public/            # 정적 파일
-│   └── src/               # 소스 코드
-│       ├── app/           # Next.js 앱 라우터
-│       │   ├── dashboard/ # 대시보드 페이지
-│       │   ├── guests/    # 고객 관리 페이지
-│       │   ├── housekeeping/ # 하우스키핑 관리 페이지
-│       │   ├── login/     # 로그인 페이지
-│       │   ├── maintenance/ # 유지보수 관리 페이지
-│       │   ├── reservations/ # 예약 관리 페이지
-│       │   ├── rooms/     # 객실 관리 페이지
-│       │   └── settings/  # 설정 페이지
-│       ├── components/    # 재사용 가능한 컴포넌트
-│       │   ├── layout/    # 레이아웃 컴포넌트
-│       │   └── ui/        # UI 컴포넌트
-│       ├── contexts/      # React Context
-│       └── lib/           # 유틸리티 함수
+├── src/                   # 소스 코드
+│   ├── app/               # Next.js 앱 라우터
+│   │   ├── dashboard/     # 대시보드 페이지
+│   │   ├── guests/        # 고객 관리 페이지
+│   │   ├── housekeeping/  # 하우스키핑 관리 페이지
+│   │   ├── login/         # 로그인 페이지
+│   │   ├── maintenance/   # 유지보수 관리 페이지
+│   │   ├── reservations/  # 예약 관리 페이지
+│   │   ├── rooms/         # 객실 관리 페이지
+│   │   └── settings/      # 설정 페이지
+│   ├── components/        # 재사용 가능한 컴포넌트
+│   │   ├── layout/        # 레이아웃 컴포넌트
+│   │   └── ui/            # UI 컴포넌트
+│   ├── contexts/          # React Context
+│   └── lib/               # 유틸리티 함수
+├── package.json           # 프로젝트 종속성
 └── README.md              # 프로젝트 문서
 ```
 
